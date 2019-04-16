@@ -14,8 +14,8 @@ android {
     defaultConfig {
         minSdkVersion 14
         targetSdkVersion 28
-        versionCode 1000
-        versionName "2.3.0"
+        versionCode 1001
+        versionName "2.3.1"
         consumerProguardFiles 'proguard-rules.pro'
     }
 
@@ -38,8 +38,8 @@ android {
 }
 
 dependencies {
-    provided 'com.facebook.stetho:stetho:1.5.0'
-    provided 'io.realm:realm-android-library:5.8.0'
-    compile fileTree(dir: 'libs', include: '*.jar')
+    compileOnly 'com.facebook.stetho:stetho:1.5.0'
+    compileOnly 'io.realm:realm-android-library:5.8.0'
+    implementation fileTree(dir: 'libs', include: '*.jar')
 }
 
