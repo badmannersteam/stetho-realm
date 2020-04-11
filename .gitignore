@@ -6,12 +6,7 @@ gradle.properties
 build/
 *.iml
 !.idea/runConfigurations/*
-.idea/*.xml
-.idea/.name
-.idea/copyright/
-.idea/libraries/
-.idea/scopes/
-.idea/inspectionProfiles/
+.idea
 
 # for eclipse
 bin

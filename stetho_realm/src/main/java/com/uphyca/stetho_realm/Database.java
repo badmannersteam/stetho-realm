@@ -31,6 +31,7 @@ import java.util.Map;
 
 import io.realm.RealmFieldType;
 import io.realm.internal.OsList;
+import io.realm.internal.OsResults;
 import io.realm.internal.Row;
 import io.realm.internal.Table;
 
@@ -194,49 +195,51 @@ public class Database implements ChromeDevtoolsDomain {
         final List<Object> flatList = new ArrayList<>();
         long numColumns = table.getColumnCount();
 
-        final RowFetcher rowFetcher = RowFetcher.getInstance();
         final long tableSize = table.size();
+        String[] columnNames = table.getColumnNames();
+        OsResults results = OsResults.createFromQuery(table.getSharedRealm(), table.where());
         for (long index = 0; index < limit && index < tableSize; index++) {
             final long row = ascendingOrder ? index : (tableSize - index - 1);
-            final RowWrapper rowData = RowWrapper.wrap(rowFetcher.getRow(table, row));
+            final RowWrapper rowData = RowWrapper.wrap(results.getUncheckedRow((int) row));
             if (addRowIndex) {
-                flatList.add(rowData.getIndex());
+                flatList.add(rowData.row.getObjectKey());
             }
             for (int column = 0; column < numColumns; column++) {
-                switch (rowData.getColumnType(column)) {
+                long key = table.getColumnKey(columnNames[column]);
+                switch (rowData.getColumnType(key)) {
                     case INTEGER:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            flatList.add(rowData.getLong(column));
+                            flatList.add(rowData.getLong(key));
                         }
                         break;
                     case BOOLEAN:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            flatList.add(rowData.getBoolean(column));
+                            flatList.add(rowData.getBoolean(key));
                         }
                         break;
                     case STRING:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            flatList.add(rowData.getString(column));
+                            flatList.add(rowData.getString(key));
                         }
                         break;
                     case BINARY:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            flatList.add(rowData.getBinaryByteArray(column));
+                            flatList.add(rowData.getBinaryByteArray(key));
                         }
                         break;
                     case FLOAT:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            final float aFloat = rowData.getFloat(column);
+                            final float aFloat = rowData.getFloat(key);
                             if (Float.isNaN(aFloat)) {
                                 flatList.add("NaN");
                             } else if (aFloat == Float.POSITIVE_INFINITY) {
@@ -249,10 +252,10 @@ public class Database implements ChromeDevtoolsDomain {
                         }
                         break;
                     case DOUBLE:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            final double aDouble = rowData.getDouble(column);
+                            final double aDouble = rowData.getDouble(key);
                             if (Double.isNaN(aDouble)) {
                                 flatList.add("NaN");
                             } else if (aDouble == Double.POSITIVE_INFINITY) {
@@ -266,22 +269,22 @@ public class Database implements ChromeDevtoolsDomain {
                         break;
                     case OLD_DATE:
                     case DATE:
-                        if (rowData.isNull(column)) {
+                        if (rowData.isNull(key)) {
                             flatList.add(NULL);
                         } else {
-                            flatList.add(formatDate(rowData.getDate(column)));
+                            flatList.add(formatDate(rowData.getDate(key)));
                         }
                         break;
                     case OBJECT:
-                        if (rowData.isNullLink(column)) {
+                        if (rowData.isNullLink(key)) {
                             flatList.add(NULL);
                         } else {
-                            flatList.add(rowData.getLink(column));
+                            flatList.add(rowData.getLink(key));
                         }
                         break;
                     case LIST:
                         // LIST never be null
-                        flatList.add(formatList(rowData.getLinkList(column)));
+                        flatList.add(formatList(rowData.getLinkList(key)));
                         break;
                     case INTEGER_LIST:
                     case BOOLEAN_LIST:
@@ -290,15 +293,15 @@ public class Database implements ChromeDevtoolsDomain {
                     case BINARY_LIST:
                     case DATE_LIST:
                     case FLOAT_LIST:
-                        if (rowData.isNullLink(column)) {
+                        if (rowData.isNullLink(key)) {
                             flatList.add(NULL);
                         } else {
-                            RealmFieldType columnType = table.getColumnType(column);
-                            flatList.add(formatValueList(rowData.getValueList(column, columnType), columnType));
+                            RealmFieldType columnType = table.getColumnType(key);
+                            flatList.add(formatValueList(rowData.getValueList(key, columnType), columnType));
                         }
                         break;
                     default:
-                        flatList.add("unknown column type: " + rowData.getColumnType(column));
+                        flatList.add("unknown column type: " + rowData.getColumnType(key));
                         break;
                 }
             }
@@ -401,7 +404,7 @@ public class Database implements ChromeDevtoolsDomain {
 
         final long size = linkList.size();
         for (long pos = 0; pos < size; pos++) {
-            sb.append(linkList.getUncheckedRow(pos).getIndex());
+            sb.append(linkList.getUncheckedRow(pos).getObjectKey());
             sb.append(',');
         }
         if (size != 0) {
@@ -411,21 +414,6 @@ public class Database implements ChromeDevtoolsDomain {
 
         sb.append("}");
         return sb.toString();
-    }
-
-    static class RowFetcher {
-        private static RowFetcher sInstance = new RowFetcher();
-
-        static RowFetcher getInstance() {
-            return sInstance;
-        }
-
-        RowFetcher() {
-        }
-
-        Row getRow(Table targetTable, long index) {
-            return targetTable.getCheckedRow(index);
-        }
     }
 
     static class RowWrapper {
@@ -439,13 +427,9 @@ public class Database implements ChromeDevtoolsDomain {
             this.row = row;
         }
 
-        long getIndex() {
-            return row.getIndex();
-        }
-
-        StethoRealmFieldType getColumnType(long columnIndex) {
+        StethoRealmFieldType getColumnType(long columnKey) {
             // io.realm.RealmFieldType
-            final Enum<?> columnType = row.getColumnType(columnIndex);
+            final Enum<?> columnType = row.getColumnType(columnKey);
             final String name = columnType.name();
             if (name.equals("INTEGER")) {
                 return StethoRealmFieldType.INTEGER;
@@ -507,52 +491,52 @@ public class Database implements ChromeDevtoolsDomain {
             return StethoRealmFieldType.UNKNOWN;
         }
 
-        boolean isNull(long columnIndex) {
-            return row.isNull(columnIndex);
+        boolean isNull(long columnKey) {
+            return row.isNull(columnKey);
         }
 
-        boolean isNullLink(long columnIndex) {
-            return row.isNullLink(columnIndex);
+        boolean isNullLink(long columnKey) {
+            return row.isNullLink(columnKey);
         }
 
-        long getLong(long columnIndex) {
-            return row.getLong(columnIndex);
+        long getLong(long columnKey) {
+            return row.getLong(columnKey);
         }
 
-        boolean getBoolean(long columnIndex) {
-            return row.getBoolean(columnIndex);
+        boolean getBoolean(long columnKey) {
+            return row.getBoolean(columnKey);
         }
 
-        float getFloat(long columnIndex) {
-            return row.getFloat(columnIndex);
+        float getFloat(long columnKey) {
+            return row.getFloat(columnKey);
         }
 
-        double getDouble(long columnIndex) {
-            return row.getDouble(columnIndex);
+        double getDouble(long columnKey) {
+            return row.getDouble(columnKey);
         }
 
-        Date getDate(long columnIndex) {
-            return row.getDate(columnIndex);
+        Date getDate(long columnKey) {
+            return row.getDate(columnKey);
         }
 
-        String getString(long columnIndex) {
-            return row.getString(columnIndex);
+        String getString(long columnKey) {
+            return row.getString(columnKey);
         }
 
-        byte[] getBinaryByteArray(long columnIndex) {
-            return row.getBinaryByteArray(columnIndex);
+        byte[] getBinaryByteArray(long columnKey) {
+            return row.getBinaryByteArray(columnKey);
         }
 
-        long getLink(long columnIndex) {
-            return row.getLink(columnIndex);
+        long getLink(long columnKey) {
+            return row.getLink(columnKey);
         }
 
-        OsList getLinkList(long columnIndex) {
-            return row.getModelList(columnIndex);
+        OsList getLinkList(long columnKey) {
+            return row.getModelList(columnKey);
         }
 
-        OsList getValueList(long columnIndex, RealmFieldType fieldType) {
-            return row.getValueList(columnIndex, fieldType);
+        OsList getValueList(long columnKey, RealmFieldType fieldType) {
+            return row.getValueList(columnKey, fieldType);
         }
     }
 }

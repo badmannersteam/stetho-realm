@@ -4,6 +4,25 @@ Stetho-Realm is a [Realm](https://realm.io/) module for [Stetho](https://faceboo
 
 It displays Realm database content in Stetho instead of SQLite database content.
 
+### Setup via Jitpack
+```groovy
+repositories {
+    maven {
+        url 'https://jitpack.io'
+    }
+}
+
+dependencies {
+    implementation 'com.facebook.stetho:stetho:1.5.1'
+    implementation 'com.github.badmannersteam:stetho-realm:2.4.0'
+}
+```
+
+This fork was updated for Realm 7.0.0-beta.
+
+
+# OUTDATED ORIGINAL INFO BELOW
+
 ## Set-up
 
 ### Download
