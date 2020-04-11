@@ -8,14 +8,14 @@ buildscript {
 apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 28
-    buildToolsVersion "28.0.3"
+    compileSdkVersion 29
+    buildToolsVersion "29.0.2"
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 28
+        targetSdkVersion 29
         versionCode 1001
-        versionName "2.3.1"
+        versionName "2.4.0"
         consumerProguardFiles 'proguard-rules.pro'
     }
 
@@ -38,8 +38,8 @@ android {
 }
 
 dependencies {
-    compileOnly 'com.facebook.stetho:stetho:1.5.0'
-    compileOnly 'io.realm:realm-android-library:5.8.0'
+    compileOnly 'com.facebook.stetho:stetho:1.5.1'
+    compileOnly 'io.realm:realm-android-library:7.0.0-beta-SNAPSHOT'
     implementation fileTree(dir: 'libs', include: '*.jar')
 }
 
